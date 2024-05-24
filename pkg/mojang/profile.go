@@ -1,14 +1,15 @@
 package mojang
 
 import (
+	"context"
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"net/http"
 	"strings"
 
 	"github.com/goccy/go-json"
 	"github.com/google/uuid"
-	"github.com/valyala/fasthttp"
 )
 
 const (
@@ -26,25 +27,25 @@ type Profile struct {
 	Properties []ProfileProperty `json:"properties"`
 }
 
-func (api *API) GetProfile(uuid uuid.UUID) (*Profile, error) {
+func (api *API) GetProfile(ctx context.Context, uuid uuid.UUID) (*Profile, error) {
 	properUUID := strings.Replace(uuid.String(), "-", "", -1)
 	apiEndpoint := fmt.Sprintf("%s/session/minecraft/profile/%s", api.sessionServer, properUUID)
 
-	res, err := api.client.RequestJSON(fasthttp.MethodGet, apiEndpoint, nil)
+	res, err := api.client.RequestJSON(ctx, http.MethodGet, apiEndpoint, nil)
 	if err != nil {
 		return nil, err
 	}
 
 	switch res.Status {
-	case fasthttp.StatusOK:
+	case http.StatusOK:
 		profile := &Profile{}
 		if err = json.Unmarshal(res.Body, profile); err != nil {
 			return nil, fmt.Errorf("%w: %s", ErrResponseParseFailed, err)
 		}
 		return profile, nil
-	case fasthttp.StatusNoContent, fasthttp.StatusNotFound:
+	case http.StatusNoContent, http.StatusNotFound:
 		return nil, fmt.Errorf("%s: %w", uuid.String(), ErrNotFound)
-	case fasthttp.StatusBadRequest:
+	case http.StatusBadRequest:
 		return nil, ErrBadRequest
 	default:
 		return nil, fmt.Errorf("%w: %d", ErrUnexpectedStatus, res.Status)
