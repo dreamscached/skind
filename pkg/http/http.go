@@ -13,13 +13,16 @@ var (
 )
 
 type Client interface {
-	SendHTTP(Request) (Response, error)
+	Request(config Request) (Response, error)
+	RequestJSON(method, url string, body []byte) (Response, error)
+	Get(url string) (Response, error)
 }
 
 type Request struct {
-	Method      string
-	URL         string
-	RequestBody []byte
+	Method         string
+	URL            string
+	RequestHeaders map[string]string
+	RequestBody    []byte
 }
 
 type Response struct {
@@ -43,26 +46,52 @@ func NewDefaultClient() Client {
 	}}
 }
 
-func (f *fasthttpClient) SendHTTP(config Request) (Response, error) {
+func (f *fasthttpClient) Request(config Request) (Response, error) {
 	req := fasthttp.AcquireRequest()
 	defer fasthttp.ReleaseRequest(req)
 
 	req.Header.SetMethod(config.Method)
 	req.SetRequestURI(config.URL)
 
-	req.Header.Set("Accept", "application/json")
+	for key, value := range config.RequestHeaders {
+		req.Header.Set(key, value)
+	}
 
 	if config.RequestBody != nil {
-		req.Header.SetContentType("application/json")
 		req.SetBody(config.RequestBody)
 	}
 
 	res := fasthttp.AcquireResponse()
 	defer fasthttp.ReleaseResponse(res)
+	return f.handleRequest(req, res)
+}
 
+func (f *fasthttpClient) RequestJSON(method, url string, body []byte) (Response, error) {
+	headers := make(map[string]string)
+	headers["Accept"] = "application/json"
+
+	if body != nil {
+		headers["Content-Type"] = "application/json"
+	}
+
+	return f.Request(Request{
+		Method:         method,
+		URL:            url,
+		RequestHeaders: headers,
+		RequestBody:    body,
+	})
+}
+
+func (f *fasthttpClient) Get(url string) (Response, error) {
+	return f.Request(Request{
+		Method: fasthttp.MethodGet,
+		URL:    url,
+	})
+}
+
+func (f *fasthttpClient) handleRequest(req *fasthttp.Request, res *fasthttp.Response) (Response, error) {
 	if err := fasthttp.Do(req, res); err != nil {
 		return Response{}, fmt.Errorf("%w: %s", ErrRequestFailed, err)
 	}
-
 	return Response{Status: res.StatusCode(), Body: res.Body()}, nil
 }

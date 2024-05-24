@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/dreamscached/skind/pkg/http"
 	"github.com/goccy/go-json"
 	"github.com/google/uuid"
 	"github.com/valyala/fasthttp"
@@ -31,11 +30,7 @@ func (api *API) GetProfile(uuid uuid.UUID) (*Profile, error) {
 	properUUID := strings.Replace(uuid.String(), "-", "", -1)
 	apiEndpoint := fmt.Sprintf("%s/session/minecraft/profile/%s", api.sessionServer, properUUID)
 
-	res, err := api.client.SendHTTP(http.Request{
-		Method:      fasthttp.MethodGet,
-		URL:         apiEndpoint,
-		RequestBody: nil,
-	})
+	res, err := api.client.RequestJSON(fasthttp.MethodGet, apiEndpoint, nil)
 	if err != nil {
 		return nil, err
 	}
