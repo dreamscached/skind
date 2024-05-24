@@ -23,5 +23,5 @@ jobs:
           check-latest: true
         
       - name: Run tests
-        run: go test ./...
+        run: go test -v ./...
         
