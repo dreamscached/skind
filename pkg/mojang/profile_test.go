@@ -32,19 +32,19 @@ func TestAPI_GetProfile(t *testing.T) {
 		}
 
 		if profile.ID != testUUID {
-			t.Error("profile ID does not match")
+			t.Errorf("expected ID %s, got %s", testUUID, profile.ID)
 		}
 
 		if profile.Name != testName {
-			t.Error("profile name does not match")
+			t.Errorf("expected name %s, got %s", testName, profile.Name)
 		}
 
 		if len(profile.Properties) != 1 {
-			t.Error("profile should have 1 property")
+			t.Errorf("expected 1 property, got %d", len(profile.Properties))
 		}
 
 		if !profile.Properties[0].IsTextures() {
-			t.Error("profile should have textures")
+			t.Errorf("expected IsTextures() to be true, found %v", profile.Properties[0].IsTextures())
 		}
 
 		if _, err = profile.Properties[0].DecodeTextures(); err != nil {
