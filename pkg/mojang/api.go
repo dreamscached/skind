@@ -1,9 +1,15 @@
 package mojang
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/dreamscached/skind/pkg/http"
+)
+
+var (
+	ErrBadRequest       = errors.New("bad request")
+	ErrUnexpectedStatus = errors.New("unexpected status code")
 )
 
 type API struct {

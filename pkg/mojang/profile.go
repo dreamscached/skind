@@ -40,12 +40,20 @@ func (api *API) GetProfile(uuid uuid.UUID) (*Profile, error) {
 		return nil, err
 	}
 
-	profile := &Profile{}
-	if err = json.Unmarshal(res.Body, profile); err != nil {
-		return nil, fmt.Errorf("%w: %s", ErrResponseParseFailed, err)
+	switch res.Status {
+	case fasthttp.StatusOK:
+		profile := &Profile{}
+		if err = json.Unmarshal(res.Body, profile); err != nil {
+			return nil, fmt.Errorf("%w: %s", ErrResponseParseFailed, err)
+		}
+		return profile, nil
+	case fasthttp.StatusNoContent, fasthttp.StatusNotFound:
+		return nil, fmt.Errorf("%s: %w", uuid.String(), ErrNotFound)
+	case fasthttp.StatusBadRequest:
+		return nil, ErrBadRequest
+	default:
+		return nil, fmt.Errorf("%w: %d", ErrUnexpectedStatus, res.Status)
 	}
-
-	return profile, nil
 }
 
 type ProfileProperty struct {
