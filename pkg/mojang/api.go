@@ -1,21 +1,15 @@
 package mojang
 
 import (
-	"errors"
 	"fmt"
-	"time"
 
-	"github.com/valyala/fasthttp"
-)
-
-var (
-	ErrHTTPSend = errors.New("failed to send HTTP request")
+	"github.com/dreamscached/skind/pkg/http"
 )
 
 type API struct {
 	sessionServer     string
 	minecraftServices string
-	client            *fasthttp.Client
+	client            http.Client
 }
 
 func MustNewAPI(options ...APIOption) *API {
@@ -44,17 +38,7 @@ func newDefaultAPI() *API {
 	return &API{
 		sessionServer:     "https://sessionserver.mojang.com",
 		minecraftServices: "https://api.minecraftservices.com",
-		client: &fasthttp.Client{
-			ReadTimeout:                   1 * time.Second,
-			WriteTimeout:                  1 * time.Second,
-			MaxIdleConnDuration:           1 * time.Hour,
-			NoDefaultUserAgentHeader:      true,
-			DisableHeaderNamesNormalizing: true,
-			Dial: (&fasthttp.TCPDialer{
-				Concurrency:      4096,
-				DNSCacheDuration: 1 * time.Hour,
-			}).Dial,
-		},
+		client:            http.NewDefaultClient(),
 	}
 }
 
@@ -74,7 +58,7 @@ func WithMinecraftServices(baseURL string) APIOption {
 	}
 }
 
-func WithHTTPClient(client *fasthttp.Client) APIOption {
+func WithHTTPClient(client http.Client) APIOption {
 	return func(api *API) error {
 		api.client = client
 		return nil
