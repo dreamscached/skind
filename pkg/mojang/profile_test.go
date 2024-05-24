@@ -1,8 +1,87 @@
 package mojang
 
 import (
+	"errors"
 	"testing"
+
+	"github.com/google/uuid"
+	"github.com/valyala/fasthttp"
 )
+
+func TestAPI_GetProfile(t *testing.T) {
+	client := &MockHTTPClient{}
+	api := MustNewAPI(WithHTTPClient(client))
+
+	t.Run("Test OK response", func(t *testing.T) {
+		testUUID, _ := uuid.Parse("069a79f444e94726a5befca90e38aaf5")
+		testName := "Notch"
+
+		client.RespondWithString(fasthttp.StatusOK, `{
+			"id": "069a79f444e94726a5befca90e38aaf5",
+			"name": "Notch",
+			"properties": [{
+				"name": "textures",
+				"value": "ewogICJ0aW1lc3RhbXAiIDogMTcxNjUzNDk1ODk2MiwKICAicHJvZmlsZUlkIiA6ICIwNjlhNzlmNDQ0ZTk0NzI2YTViZWZjYTkwZTM4YWFmNSIsCiAgInByb2ZpbGVOYW1lIiA6ICJOb3RjaCIsCiAgInRleHR1cmVzIiA6IHsKICAgICJTS0lOIiA6IHsKICAgICAgInVybCIgOiAiaHR0cDovL3RleHR1cmVzLm1pbmVjcmFmdC5uZXQvdGV4dHVyZS8yOTIwMDlhNDkyNWI1OGYwMmM3N2RhZGMzZWNlZjA3ZWE0Yzc0NzJmNjRlMGZkYzMyY2U1NTIyNDg5MzYyNjgwIgogICAgfQogIH0KfQ=="
+			}],
+		  "profileActions": []
+		}`)
+
+		profile, err := api.GetProfile(testUUID)
+		if err != nil {
+			t.Errorf("error getting profile: %v", err)
+		}
+
+		if profile.ID != testUUID {
+			t.Error("profile ID does not match")
+		}
+
+		if profile.Name != testName {
+			t.Error("profile name does not match")
+		}
+
+		if len(profile.Properties) != 1 {
+			t.Error("profile should have 1 property")
+		}
+
+		if !profile.Properties[0].IsTextures() {
+			t.Error("profile should have textures")
+		}
+
+		if _, err = profile.Properties[0].DecodeTextures(); err != nil {
+			t.Errorf("profile has invalid textures: %v", err)
+		}
+	})
+
+	t.Run("Test missing UUID", func(t *testing.T) {
+		testUUID, _ := uuid.Parse("00000000000000000000000000000000")
+		client.RespondWithString(fasthttp.StatusNoContent, "")
+
+		_, err := api.GetProfile(testUUID)
+		if !errors.Is(err, ErrNotFound) {
+			t.Errorf("expected ErrNotFound, got %v", err)
+		}
+	})
+
+	t.Run("Test invalid UUID", func(t *testing.T) {
+		testUUID, _ := uuid.Parse("00000000000000000000000000000000")
+		client.RespondWithString(fasthttp.StatusBadRequest, "")
+
+		_, err := api.GetProfile(testUUID)
+		if !errors.Is(err, ErrBadRequest) {
+			t.Errorf("expected ErrBadRequest, got %v", err)
+		}
+	})
+
+	t.Run("Test unexpected error", func(t *testing.T) {
+		testUUID, _ := uuid.Parse("00000000000000000000000000000000")
+		client.RespondWithString(fasthttp.StatusTeapot, "")
+
+		_, err := api.GetProfile(testUUID)
+		if !errors.Is(err, ErrUnexpectedStatus) {
+			t.Errorf("expected ErrUnexpectedStatus, got %v", err)
+		}
+	})
+}
 
 func TestProfileProperty_IsTextures(t *testing.T) {
 	t.Run("Test valid textures property", func(t *testing.T) {
