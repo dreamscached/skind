@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/dreamscached/skind/pkg/http"
 	"github.com/goccy/go-json"
 	"github.com/google/uuid"
 	"github.com/valyala/fasthttp"
@@ -19,28 +20,21 @@ type UsernameUUID struct {
 }
 
 func (api *API) GetUUID(username string) (*UsernameUUID, error) {
-	req := fasthttp.AcquireRequest()
-	defer fasthttp.ReleaseRequest(req)
+	apiEndpoint := fmt.Sprintf("%s/minecraft/profile/lookup/bulk/byname", api.minecraftServices)
+	requestBody, _ := json.Marshal([]string{username})
 
-	req.SetRequestURI(fmt.Sprintf("%s/minecraft/profile/lookup/bulk/byname", api.minecraftServices))
-
-	req.Header.SetMethod(fasthttp.MethodPost)
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Accept", "application/json")
-
-	payload, _ := json.Marshal([]string{username})
-	req.SetBody(payload)
-
-	res := fasthttp.AcquireResponse()
-	defer fasthttp.ReleaseResponse(res)
-
-	if err := api.client.Do(req, res); err != nil {
-		return nil, fmt.Errorf("%w: %s", ErrHTTPSend, err)
+	res, err := api.client.SendHTTP(http.Request{
+		Method:      fasthttp.MethodPost,
+		URL:         apiEndpoint,
+		RequestBody: requestBody,
+	})
+	if err != nil {
+		return nil, err
 	}
 
 	results := make([]*UsernameUUID, 0, 1)
-	if err := json.Unmarshal(res.Body(), &results); err != nil {
-		return nil, fmt.Errorf("%w: %s", ErrResponseParse, err)
+	if err := json.Unmarshal(res.Body, &results); err != nil {
+		return nil, fmt.Errorf("%w: %s", ErrResponseParseFailed, err)
 	}
 
 	if len(results) == 0 {

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/dreamscached/skind/pkg/http"
 	"github.com/goccy/go-json"
 	"github.com/google/uuid"
 	"github.com/valyala/fasthttp"
@@ -16,8 +17,8 @@ const (
 )
 
 var (
-	ErrResponseParse  = errors.New("failed to parse response data")
-	ErrPropertyDecode = errors.New("failed to decode profile property")
+	ErrResponseParseFailed = errors.New("failed to parse response data")
+	ErrPropertyDecode      = errors.New("failed to decode profile property")
 )
 
 type Profile struct {
@@ -27,25 +28,21 @@ type Profile struct {
 }
 
 func (api *API) GetProfile(uuid uuid.UUID) (*Profile, error) {
-	req := fasthttp.AcquireRequest()
-	defer fasthttp.ReleaseRequest(req)
+	properUUID := strings.Replace(uuid.String(), "-", "", -1)
+	apiEndpoint := fmt.Sprintf("%s/session/minecraft/profile/%s", api.sessionServer, properUUID)
 
-	normalizedUUID := strings.Replace(uuid.String(), "-", "", -1)
-	req.SetRequestURI(fmt.Sprintf("%s/session/minecraft/profile/%s", api.sessionServer, normalizedUUID))
-
-	req.Header.SetMethod(fasthttp.MethodGet)
-	req.Header.Set("Accept", "application/json")
-
-	res := fasthttp.AcquireResponse()
-	defer fasthttp.ReleaseResponse(res)
-
-	if err := api.client.Do(req, res); err != nil {
-		return nil, fmt.Errorf("%w: %s", ErrHTTPSend, err)
+	res, err := api.client.SendHTTP(http.Request{
+		Method:      fasthttp.MethodGet,
+		URL:         apiEndpoint,
+		RequestBody: nil,
+	})
+	if err != nil {
+		return nil, err
 	}
 
 	profile := &Profile{}
-	if err := json.Unmarshal(res.Body(), profile); err != nil {
-		return nil, fmt.Errorf("%w: %s", ErrResponseParse, err)
+	if err = json.Unmarshal(res.Body, profile); err != nil {
+		return nil, fmt.Errorf("%w: %s", ErrResponseParseFailed, err)
 	}
 
 	return profile, nil
