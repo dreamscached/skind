@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/dreamscached/skind/pkg/http"
 	"github.com/goccy/go-json"
 	"github.com/google/uuid"
 	"github.com/valyala/fasthttp"
@@ -23,11 +22,7 @@ func (api *API) GetUUID(username string) (*UsernameUUID, error) {
 	apiEndpoint := fmt.Sprintf("%s/minecraft/profile/lookup/bulk/byname", api.minecraftServices)
 	requestBody, _ := json.Marshal([]string{username})
 
-	res, err := api.client.SendHTTP(http.Request{
-		Method:      fasthttp.MethodPost,
-		URL:         apiEndpoint,
-		RequestBody: requestBody,
-	})
+	res, err := api.client.RequestJSON(fasthttp.MethodGet, apiEndpoint, requestBody)
 	if err != nil {
 		return nil, err
 	}
