@@ -1,11 +1,12 @@
 package mojang
 
 import (
+	"context"
 	"errors"
+	"net/http"
 	"testing"
 
 	"github.com/google/uuid"
-	"github.com/valyala/fasthttp"
 )
 
 func TestAPI_GetProfile(t *testing.T) {
@@ -16,7 +17,7 @@ func TestAPI_GetProfile(t *testing.T) {
 		testUUID, _ := uuid.Parse("069a79f444e94726a5befca90e38aaf5")
 		testName := "Notch"
 
-		client.RespondWithString(fasthttp.StatusOK, `{
+		client.RespondWithString(http.StatusOK, `{
 			"id": "069a79f444e94726a5befca90e38aaf5",
 			"name": "Notch",
 			"properties": [{
@@ -26,7 +27,7 @@ func TestAPI_GetProfile(t *testing.T) {
 		  "profileActions": []
 		}`)
 
-		profile, err := api.GetProfile(testUUID)
+		profile, err := api.GetProfile(context.Background(), testUUID)
 		if err != nil {
 			t.Errorf("error getting profile: %v", err)
 		}
@@ -54,9 +55,9 @@ func TestAPI_GetProfile(t *testing.T) {
 
 	t.Run("Test missing UUID", func(t *testing.T) {
 		testUUID, _ := uuid.Parse("00000000000000000000000000000000")
-		client.RespondWithString(fasthttp.StatusNoContent, "")
+		client.RespondWithString(http.StatusNoContent, "")
 
-		_, err := api.GetProfile(testUUID)
+		_, err := api.GetProfile(context.Background(), testUUID)
 		if !errors.Is(err, ErrNotFound) {
 			t.Errorf("expected ErrNotFound, got %v", err)
 		}
@@ -64,9 +65,9 @@ func TestAPI_GetProfile(t *testing.T) {
 
 	t.Run("Test invalid UUID", func(t *testing.T) {
 		testUUID, _ := uuid.Parse("00000000000000000000000000000000")
-		client.RespondWithString(fasthttp.StatusBadRequest, "")
+		client.RespondWithString(http.StatusBadRequest, "")
 
-		_, err := api.GetProfile(testUUID)
+		_, err := api.GetProfile(context.Background(), testUUID)
 		if !errors.Is(err, ErrBadRequest) {
 			t.Errorf("expected ErrBadRequest, got %v", err)
 		}
@@ -74,9 +75,9 @@ func TestAPI_GetProfile(t *testing.T) {
 
 	t.Run("Test unexpected error", func(t *testing.T) {
 		testUUID, _ := uuid.Parse("00000000000000000000000000000000")
-		client.RespondWithString(fasthttp.StatusTeapot, "")
+		client.RespondWithString(http.StatusTeapot, "")
 
-		_, err := api.GetProfile(testUUID)
+		_, err := api.GetProfile(context.Background(), testUUID)
 		if !errors.Is(err, ErrUnexpectedStatus) {
 			t.Errorf("expected ErrUnexpectedStatus, got %v", err)
 		}
