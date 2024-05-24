@@ -11,7 +11,7 @@ import (
 )
 
 var (
-	ErrUsernameNotFound = errors.New("username not found")
+	ErrNotFound = errors.New("not found")
 )
 
 type UsernameUUID struct {
@@ -32,14 +32,19 @@ func (api *API) GetUUID(username string) (*UsernameUUID, error) {
 		return nil, err
 	}
 
-	results := make([]*UsernameUUID, 0, 1)
-	if err := json.Unmarshal(res.Body, &results); err != nil {
-		return nil, fmt.Errorf("%w: %s", ErrResponseParseFailed, err)
+	switch res.Status {
+	case fasthttp.StatusOK:
+		results := make([]*UsernameUUID, 0, 1)
+		if err = json.Unmarshal(res.Body, &results); err != nil {
+			return nil, fmt.Errorf("%w: %s", ErrResponseParseFailed, err)
+		}
+		if len(results) == 0 {
+			return nil, fmt.Errorf("%s: %w", username, ErrNotFound)
+		}
+		return results[0], nil
+	case fasthttp.StatusBadRequest:
+		return nil, ErrBadRequest
+	default:
+		return nil, fmt.Errorf("%w: %d", ErrUnexpectedStatus, res.Status)
 	}
-
-	if len(results) == 0 {
-		return nil, fmt.Errorf("%w: %s", ErrUsernameNotFound, username)
-	}
-
-	return results[0], nil
 }
